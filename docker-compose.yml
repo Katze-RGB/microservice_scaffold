@@ -1,0 +1,44 @@
+version: "3"
+
+services:
+  web:
+    container_name: web
+    build: .
+    ports:
+      - "5000:5000"
+    links:
+      - redis
+    depends_on:
+      - redis
+    environment:
+      - FLASK_ENV=local
+    volumes:
+      - .:/app
+    command: bash -c "python /app/api/app.py"
+
+  redis:
+    container_name: redis
+    image: redis:5.0.5
+    hostname: redis
+
+  worker:
+    build: .
+    command: bash -c "cd /app/api && celery -A celery_app.celery worker --loglevel=info --concurrency=3"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=local
+    depends_on:
+      - redis
+    stdin_open: true
+    tty: true
+
+
+  flower:
+    image: mher/flower:0.9.7
+    command: [ 'flower', '--broker=redis://redis:6379', '--port=5555']
+    ports:
+      - 5557:5555
+    depends_on:
+      - redis
+
